@@ -22,28 +22,23 @@ int ReversiBoard::getScore(BoardTile color){
 	return score;
 }
 
-BOOL ReversiBoard::canPlacePiece(BoardTile goodColor, BoardTile badColor, Tile position){
+UBYTE ReversiBoard::canPlacePiece(BoardTile goodColor, BoardTile badColor, Tile position){
 	char buf[64];
 	sprintf(buf, "board.canPlacePiece() position is (%d,%d)\r\n", position.x, position.y);
-
 	serialPort.SendString(buf);
 
-	if(checkE(goodColor, badColor, position) || checkW(goodColor, badColor, position) || checkS(goodColor, badColor, position) || checkN(goodColor, badColor, position)){
-		return TRUE;
-	}
-
-	if(checkSE(goodColor, badColor, position) || checkSW(goodColor, badColor, position) || checkNW(goodColor, badColor, position) || checkNE(goodColor, badColor, position))
-		return TRUE;
-
-	return FALSE;
+	return checkDirection(goodColor, badColor, position);
 }
 
 /*******************************************
 * There's a better way to do this...
 */
-BOOL ReversiBoard::checkE(BoardTile goodColor, BoardTile badColor, Tile position){
-	serialPort.SendString("* checkE\r\n");
+UBYTE ReversiBoard::checkDirection(BoardTile goodColor, BoardTile badColor, Tile position){
+	UBYTE validDirections = 0x00;
+
 	char buf[64];
+
+	BoardDirection direction = BOARD_DIR_E;
 
 	Tile currentTile { position.x, position.y };
 	BoardTile currentPiece = getSquare(position.x, position.y);
@@ -51,248 +46,76 @@ BOOL ReversiBoard::checkE(BoardTile goodColor, BoardTile badColor, Tile position
 	BOOL foundBadTile = FALSE;
 	BOOL foundEmptyTile = FALSE;
 
-	sprintf(buf, "currentTile is (%d, %d)\r\n", currentTile.x, currentTile.y);
-	serialPort.SendString(buf);
+	BOOL advanceToNextDirection = FALSE;
+
+	sprintf(buf, "currentTile is (%d, %d). direction is %d\r\n", currentTile.x, currentTile.y, direction);
+	//serialPort.SendString(buf);
 
 	//Loop until we run off the board, find a good color tile, or find an empty tile.
-	while(currentTile.isPositionValid() && (foundGoodTile == FALSE && foundEmptyTile == FALSE)) {
-		currentTile = currentTile.E();
+	while(direction <= 7) {
+
+		switch(direction){
+			case BOARD_DIR_E:
+				currentTile = currentTile.E();
+				break;
+			case BOARD_DIR_SE:
+				currentTile = currentTile.SE();
+				break;
+			case BOARD_DIR_S:
+				currentTile = currentTile.S();
+				break;
+			case BOARD_DIR_SW:
+				currentTile = currentTile.SW();
+				break;
+			case BOARD_DIR_W:
+				currentTile = currentTile.W();
+				break;
+			case BOARD_DIR_NW:
+				currentTile = currentTile.NW();
+				break;
+			case BOARD_DIR_N:
+				currentTile = currentTile.N();
+				break;
+			case BOARD_DIR_NE:
+				currentTile = currentTile.NE();
+				break;
+		}
+
 		currentPiece = getSquare(currentTile.x, currentTile.y);
 
-		sprintf(buf, "Now looking at currentTile (%d,%d)\r\n", currentTile.x, currentTile.y);
+		sprintf(buf, "Now looking at currentTile (%d,%d). Color is %d. Good %d Bad %d\r\n", currentTile.x, currentTile.y, currentPiece, goodColor, badColor);
 		serialPort.SendString(buf);
 
 		if(currentPiece == badColor) foundBadTile = TRUE;					//Note this and keep traversing.
 		else if(currentPiece == goodColor) foundGoodTile = TRUE; 			//This will be the last traversal.
 		else if(currentPiece == BOARD_TILE_EMPTY) foundEmptyTile = TRUE; 	//This will be the last traversal.
+
+		//This is broken again.
+		if(foundBadTile == TRUE && foundGoodTile == TRUE){
+			validDirections = validDirections | (1 << direction); //set bitflag for this direction
+			sprintf(buf, "added flag 0x%02X - validDirections is now 0x%02X\r\n", (1 << direction), validDirections);
+			serialPort.SendString(buf);
+			advanceToNextDirection = TRUE;
+		}
+		else if((!currentTile.isPositionValid() || foundEmptyTile == TRUE) || (foundBadTile == FALSE && foundGoodTile == TRUE)) {
+			advanceToNextDirection = TRUE;
+		}
+
+		if(advanceToNextDirection){
+			currentTile = { position.x, position.y };
+			currentPiece = getSquare(position.x, position.y);
+			direction = static_cast<BoardDirection>(direction + 1);
+
+			foundBadTile = FALSE;
+			foundGoodTile = FALSE;
+			foundEmptyTile = FALSE;
+
+			sprintf(buf, "Direction is now %d", direction);
+			//serialPort.SendString(buf);
+
+			advanceToNextDirection = FALSE;
+		}
 	}
-	if(foundBadTile == TRUE && foundGoodTile == TRUE){
-		serialPort.SendString("* checkE: TRUE!\r\n");
-		return TRUE; //If we found a bad tile and a good tile, we can place here.
-	} 
-	else return FALSE;
-}
 
-BOOL ReversiBoard::checkW(BoardTile goodColor, BoardTile badColor, Tile position){
-	serialPort.SendString("* checkW\r\n");
-	char buf[64];
-
-	Tile currentTile { position.x, position.y };
-	BoardTile currentPiece = getSquare(position.x, position.y);
-	BOOL foundGoodTile = FALSE;
-	BOOL foundBadTile = FALSE;
-	BOOL foundEmptyTile = FALSE;
-
-	sprintf(buf, "currentTile is (%d, %d)\r\n", currentTile.x, currentTile.y);
-	serialPort.SendString(buf);
-
-	//Loop until we run off the board, find a good color tile, or find an empty tile.
-	while(currentTile.isPositionValid() && (foundGoodTile == FALSE && foundEmptyTile == FALSE)) {
-		currentTile = currentTile.W();
-		currentPiece = getSquare(currentTile.x, currentTile.y);
-
-		sprintf(buf, "Now looking at currentTile (%d,%d)\r\n", currentTile.x, currentTile.y);
-		serialPort.SendString(buf);
-
-		if(currentPiece == badColor) foundBadTile = TRUE;					//Note this and keep traversing.
-		else if(currentPiece == goodColor) foundGoodTile = TRUE; 			//This will be the last traversal.
-		else if(currentPiece == BOARD_TILE_EMPTY) foundEmptyTile = TRUE; 	//This will be the last traversal.
-	}
-	if(foundBadTile == TRUE && foundGoodTile == TRUE){
-		serialPort.SendString("* checkW: TRUE!\r\n");
-		return TRUE; //If we found a bad tile and a good tile, we can place here.
-	} 
-	else return FALSE;
-}
-
-BOOL ReversiBoard::checkN(BoardTile goodColor, BoardTile badColor, Tile position){
-	serialPort.SendString("* checkN\r\n");
-	char buf[64];
-
-	Tile currentTile { position.x, position.y };
-	BoardTile currentPiece = getSquare(position.x, position.y);
-	BOOL foundGoodTile = FALSE;
-	BOOL foundBadTile = FALSE;
-	BOOL foundEmptyTile = FALSE;
-
-	sprintf(buf, "currentTile is (%d, %d)\r\n", currentTile.x, currentTile.y);
-	serialPort.SendString(buf);
-
-	//Loop until we run off the board, find a good color tile, or find an empty tile.
-	while(currentTile.isPositionValid() && (foundGoodTile == FALSE && foundEmptyTile == FALSE)) {
-		currentTile = currentTile.N();
-		currentPiece = getSquare(currentTile.x, currentTile.y);
-
-		sprintf(buf, "Now looking at currentTile (%d,%d)\r\n", currentTile.x, currentTile.y);
-		serialPort.SendString(buf);
-
-		if(currentPiece == badColor) foundBadTile = TRUE;					//Note this and keep traversing.
-		else if(currentPiece == goodColor) foundGoodTile = TRUE; 			//This will be the last traversal.
-		else if(currentPiece == BOARD_TILE_EMPTY) foundEmptyTile = TRUE; 	//This will be the last traversal.
-	}
-	if(foundBadTile == TRUE && foundGoodTile == TRUE){
-		serialPort.SendString("* checkN: TRUE!\r\n");
-		return TRUE; //If we found a bad tile and a good tile, we can place here.
-	} 
-	else return FALSE;
-}
-
-BOOL ReversiBoard::checkS(BoardTile goodColor, BoardTile badColor, Tile position){
-	serialPort.SendString("* checkS\r\n");
-	char buf[64];
-
-	Tile currentTile { position.x, position.y };
-	BoardTile currentPiece = getSquare(position.x, position.y);
-	BOOL foundGoodTile = FALSE;
-	BOOL foundBadTile = FALSE;
-	BOOL foundEmptyTile = FALSE;
-
-	sprintf(buf, "currentTile is (%d, %d)\r\n", currentTile.x, currentTile.y);
-	serialPort.SendString(buf);
-
-	//Loop until we run off the board, find a good color tile, or find an empty tile.
-	while(currentTile.isPositionValid() && (foundGoodTile == FALSE && foundEmptyTile == FALSE)) {
-		currentTile = currentTile.S();
-		currentPiece = getSquare(currentTile.x, currentTile.y);
-
-		sprintf(buf, "Now looking at currentTile (%d,%d)\r\n", currentTile.x, currentTile.y);
-		serialPort.SendString(buf);
-
-		if(currentPiece == badColor) foundBadTile = TRUE;					//Note this and keep traversing.
-		else if(currentPiece == goodColor) foundGoodTile = TRUE; 			//This will be the last traversal.
-		else if(currentPiece == BOARD_TILE_EMPTY) foundEmptyTile = TRUE; 	//This will be the last traversal.
-	}
-	if(foundBadTile == TRUE && foundGoodTile == TRUE){
-		serialPort.SendString("* checkS: TRUE!\r\n");
-		return TRUE; //If we found a bad tile and a good tile, we can place here.
-	} 
-	else return FALSE;
-}
-
-BOOL ReversiBoard::checkSW(BoardTile goodColor, BoardTile badColor, Tile position){
-	serialPort.SendString("* checkSW\r\n");
-	char buf[64];
-
-	Tile currentTile { position.x, position.y };
-	BoardTile currentPiece = getSquare(position.x, position.y);
-	BOOL foundGoodTile = FALSE;
-	BOOL foundBadTile = FALSE;
-	BOOL foundEmptyTile = FALSE;
-
-	sprintf(buf, "currentTile is (%d, %d)\r\n", currentTile.x, currentTile.y);
-	serialPort.SendString(buf);
-
-	//Loop until we run off the board, find a good color tile, or find an empty tile.
-	while(currentTile.isPositionValid() && (foundGoodTile == FALSE && foundEmptyTile == FALSE)) {
-		currentTile = currentTile.SW();
-		currentPiece = getSquare(currentTile.x, currentTile.y);
-
-		sprintf(buf, "Now looking at currentTile (%d,%d)\r\n", currentTile.x, currentTile.y);
-		serialPort.SendString(buf);
-
-		if(currentPiece == badColor) foundBadTile = TRUE;					//Note this and keep traversing.
-		else if(currentPiece == goodColor) foundGoodTile = TRUE; 			//This will be the last traversal.
-		else if(currentPiece == BOARD_TILE_EMPTY) foundEmptyTile = TRUE; 	//This will be the last traversal.
-	}
-	if(foundBadTile == TRUE && foundGoodTile == TRUE){
-		serialPort.SendString("* checkSW: TRUE!\r\n");
-		return TRUE; //If we found a bad tile and a good tile, we can place here.
-	} 
-	else return FALSE;
-}
-
-BOOL ReversiBoard::checkSE(BoardTile goodColor, BoardTile badColor, Tile position){
-	serialPort.SendString("* checkSE\r\n");
-	char buf[64];
-
-	Tile currentTile { position.x, position.y };
-	BoardTile currentPiece = getSquare(position.x, position.y);
-	BOOL foundGoodTile = FALSE;
-	BOOL foundBadTile = FALSE;
-	BOOL foundEmptyTile = FALSE;
-
-	sprintf(buf, "currentTile is (%d, %d)\r\n", currentTile.x, currentTile.y);
-	serialPort.SendString(buf);
-
-	//Loop until we run off the board, find a good color tile, or find an empty tile.
-	while(currentTile.isPositionValid() && (foundGoodTile == FALSE && foundEmptyTile == FALSE)) {
-		currentTile = currentTile.SE();
-		currentPiece = getSquare(currentTile.x, currentTile.y);
-
-		sprintf(buf, "Now looking at currentTile (%d,%d)\r\n", currentTile.x, currentTile.y);
-		serialPort.SendString(buf);
-
-		if(currentPiece == badColor) foundBadTile = TRUE;					//Note this and keep traversing.
-		else if(currentPiece == goodColor) foundGoodTile = TRUE; 			//This will be the last traversal.
-		else if(currentPiece == BOARD_TILE_EMPTY) foundEmptyTile = TRUE; 	//This will be the last traversal.
-	}
-	if(foundBadTile == TRUE && foundGoodTile == TRUE){
-		serialPort.SendString("* checkSE: TRUE!\r\n");
-		return TRUE; //If we found a bad tile and a good tile, we can place here.
-	} 
-	else return FALSE;
-}
-
-BOOL ReversiBoard::checkNW(BoardTile goodColor, BoardTile badColor, Tile position){
-	serialPort.SendString("* checkNW\r\n");
-	char buf[64];
-
-	Tile currentTile { position.x, position.y };
-	BoardTile currentPiece = getSquare(position.x, position.y);
-	BOOL foundGoodTile = FALSE;
-	BOOL foundBadTile = FALSE;
-	BOOL foundEmptyTile = FALSE;
-
-	sprintf(buf, "currentTile is (%d, %d)\r\n", currentTile.x, currentTile.y);
-	serialPort.SendString(buf);
-
-	//Loop until we run off the board, find a good color tile, or find an empty tile.
-	while(currentTile.isPositionValid() && (foundGoodTile == FALSE && foundEmptyTile == FALSE)) {
-		currentTile = currentTile.NW();
-		currentPiece = getSquare(currentTile.x, currentTile.y);
-
-		sprintf(buf, "Now looking at currentTile (%d,%d)\r\n", currentTile.x, currentTile.y);
-		serialPort.SendString(buf);
-
-		if(currentPiece == badColor) foundBadTile = TRUE;					//Note this and keep traversing.
-		else if(currentPiece == goodColor) foundGoodTile = TRUE; 			//This will be the last traversal.
-		else if(currentPiece == BOARD_TILE_EMPTY) foundEmptyTile = TRUE; 	//This will be the last traversal.
-	}
-	if(foundBadTile == TRUE && foundGoodTile == TRUE){
-		serialPort.SendString("* checkNW: TRUE!\r\n");
-		return TRUE; //If we found a bad tile and a good tile, we can place here.
-	} 
-	else return FALSE;
-}
-
-BOOL ReversiBoard::checkNE(BoardTile goodColor, BoardTile badColor, Tile position){
-	serialPort.SendString("* checkNE\r\n");
-	char buf[64];
-
-	Tile currentTile { position.x, position.y };
-	BoardTile currentPiece = getSquare(position.x, position.y);
-	BOOL foundGoodTile = FALSE;
-	BOOL foundBadTile = FALSE;
-	BOOL foundEmptyTile = FALSE;
-
-	sprintf(buf, "currentTile is (%d, %d)\r\n", currentTile.x, currentTile.y);
-	serialPort.SendString(buf);
-
-	//Loop until we run off the board, find a good color tile, or find an empty tile.
-	while(currentTile.isPositionValid() && (foundGoodTile == FALSE && foundEmptyTile == FALSE)) {
-		currentTile = currentTile.NE();
-		currentPiece = getSquare(currentTile.x, currentTile.y);
-
-		sprintf(buf, "Now looking at currentTile (%d,%d)\r\n", currentTile.x, currentTile.y);
-		serialPort.SendString(buf);
-
-		if(currentPiece == badColor) foundBadTile = TRUE;					//Note this and keep traversing.
-		else if(currentPiece == goodColor) foundGoodTile = TRUE; 			//This will be the last traversal.
-		else if(currentPiece == BOARD_TILE_EMPTY) foundEmptyTile = TRUE; 	//This will be the last traversal.
-	}
-	if(foundBadTile == TRUE && foundGoodTile == TRUE){
-		serialPort.SendString("* checkNE: TRUE!\r\n");
-		return TRUE; //If we found a bad tile and a good tile, we can place here.
-	} 
-	else return FALSE;
+	return validDirections;
 }

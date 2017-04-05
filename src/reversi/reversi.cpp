@@ -50,24 +50,32 @@ void REV_DrawPieces(struct Window *window){
 					REV_PlacePiece(window->RPort, PEN_WHITE, x, y);
 					break;
 				default:
-					REV_PlaceBackground(window->RPort, PEN_BLUE, x, y);
 					break;
 			}
 		}
 		
 	}
-	
 }
 
 void REV_PlacePiece(struct RastPort *rp, UBYTE color, int x, int y){
 
-	serialPort.SendString("REV_PlacePiece()\r\n");
+	switch(color){
+		case PEN_WHITE:
+		board.setSquare(x, y, BOARD_TILE_WHITE);
+		break;
+		case PEN_BLACK:
+		board.setSquare(x, y, BOARD_TILE_BLACK);
+		break;
+	}
 
 	int xCenter = (BOARD_STARTING_X+(x*TILE_SIZE_X)) + (TILE_SIZE_X / 2);
 	int yCenter = (BOARD_STARTING_Y+(y*TILE_SIZE_Y)) + (TILE_SIZE_Y / 2);
 
+	serialPort.SendString("REV_PlacePiece()\r\n");
 	SetAPen(rp, color);
-	RectFill(rp, xCenter-5, yCenter-5, xCenter+5, yCenter+5); 
+
+	AreaCircle(rp, xCenter, yCenter, 5);
+	AreaEnd(rp);
 
 	serialPort.SendString("REV_PlacePiece() complete\r\n");
 }
@@ -83,7 +91,7 @@ Tile REV_PixelToTile(UWORD x, UWORD y){
 	
 }
 
-void REV_DrawScores(struct Window *window, ReversiBoard board){
+void REV_DrawScores(struct Window *window){
 	auto rp = window->RPort;
 	
 	int whiteScore = board.getScore(BOARD_TILE_WHITE);
@@ -116,9 +124,36 @@ void REV_HandleTileClick(struct Window *window, UWORD mouseX, UWORD mouseY){
 	sprintf(clickStr, "Tile (%2d,%2d)", tile.x, tile.y);
 	PrintString(window->RPort, clickStr, PEN_WHITE, 0, 32);
 	
-	BOOL isLegalMove = REV_CheckMoveLegality(board, tile);
+	UBYTE isLegalMove = REV_CheckMoveLegality(tile);
+
+	BoardTile goodColor, badColor;
 
 	if(isLegalMove){
+		UBYTE pen;
+		switch(gameState) {
+			case GAME_TURN_WHITE:
+				pen = PEN_WHITE;
+				goodColor = BOARD_TILE_WHITE;
+				badColor = BOARD_TILE_BLACK;
+				break;
+			case GAME_TURN_BLACK:
+				pen = PEN_BLACK;
+				goodColor = BOARD_TILE_BLACK;
+				badColor = BOARD_TILE_WHITE;
+				break;
+			default:
+				pen = PEN_BLUE;
+				goodColor = BOARD_TILE_EMPTY;
+				badColor = BOARD_TILE_EMPTY;
+				break;
+		}
+
+		REV_FlipPieces(window->RPort, tile, isLegalMove, goodColor, badColor);
+		REV_PlacePiece(window->RPort, pen, tile.x, tile.y);
+		REV_DrawBoard(window);
+		REV_DrawPieces(window);
+		REV_DrawScores(window);
+		REV_AdvanceGameState(window);
 		REV_PrintGameStatus(window);
 	} else {
 		PrintString(window->RPort, STR_ILLEGAL_MOVE, PEN_WHITE, 0, 192);
@@ -133,7 +168,7 @@ void REV_PrintGameStatus(struct Window *window){
 			sprintf(buf, STR_WHITES_TURN);
 			break;
 		case GAME_TURN_BLACK:
-			sprintf(buf, STR_WHITES_TURN);
+			sprintf(buf, STR_BLACKS_TURN);
 			break;
 		case GAME_OVER:
 			sprintf(buf, STR_GAME_OVER);
@@ -143,7 +178,7 @@ void REV_PrintGameStatus(struct Window *window){
 	PrintString(window->RPort, buf, PEN_WHITE, 0, 192);
 }
 
-BOOL REV_CheckMoveLegality(ReversiBoard board, Tile move){
+UBYTE REV_CheckMoveLegality(Tile move){
 	//	* 	Look for a neighboring piece of opposite color
 	//	* 	Traverse the board in that direction
 	//	*	If there's a piece of our color before we reach the end of the board, the move is valid
@@ -170,8 +205,93 @@ BOOL REV_CheckMoveLegality(ReversiBoard board, Tile move){
 	}
 
 	if(board.getSquare(move.x, move.y) != BOARD_TILE_EMPTY){
+		char buf[64];
+		sprintf(buf, "* Piece already present in (%d,%d). Illegal. \r\n", move.x, move.y);
+		serialPort.SendString(buf);
 		return false;
 	}
 
 	return board.canPlacePiece(goodColor, badColor, move);
+}
+
+void REV_FlipPieces(struct RastPort *rp, Tile origin, UBYTE directions, BoardTile goodColor, BoardTile badColor){
+	char buf[64];
+	sprintf(buf, "REV_FlipPieces(): direction flags are 0x%02X\r\n", directions);
+	serialPort.SendString(buf);
+	//return 0;
+
+	//Flip pieces in the directions specified in UBYTE directions until we run into a good color piece.
+	BoardDirection direction = static_cast<BoardDirection>(0);
+	Tile currentTile = origin;
+
+	//find the first direction flag in directions
+	while(direction <= 7) {
+
+		if((directions & (1 << direction)) == 0) {
+			direction = static_cast<BoardDirection>(direction + 1);
+			continue;
+		} else {
+			sprintf(buf, "REV_FlipPieces(): processing direction %02X\r\n", (1 << direction));
+			serialPort.SendString(buf);
+		}
+
+		switch(direction){
+			case BOARD_DIR_E:
+				currentTile = currentTile.E();
+				break;
+			case BOARD_DIR_SE:
+				currentTile = currentTile.SE();
+				break;
+			case BOARD_DIR_S:
+				currentTile = currentTile.S();
+				break;
+			case BOARD_DIR_SW:
+				currentTile = currentTile.SW();
+				break;
+			case BOARD_DIR_W:
+				currentTile = currentTile.W();
+				break;
+			case BOARD_DIR_NW:
+				currentTile = currentTile.NW();
+				break;
+			case BOARD_DIR_N:
+				currentTile = currentTile.N();
+				break;
+			case BOARD_DIR_NE:
+				currentTile = currentTile.NE();
+				break;
+		}
+
+		BoardTile currentPiece = board.getSquare(currentTile.x, currentTile.y);
+		board.setSquare(currentTile.x, currentTile.y, goodColor);
+		sprintf(buf, "Flipped tile (%d,%d)\r\n", currentTile.x, currentTile.y);
+		serialPort.SendString(buf);
+		if(currentPiece == goodColor){
+			direction = static_cast<BoardDirection>(direction + 1);
+			currentTile = origin;
+		}
+	}
+}
+
+void REV_AdvanceGameState(struct Window *window){
+	if(gameState == GAME_TURN_WHITE) {
+		gameState = GAME_TURN_BLACK;
+		SetAPen(window->RPort, PEN_BLACK);
+		Move(window->RPort, NAME_BLACK_X-5, NAME_BLACK_Y-8);
+		Draw(window->RPort, NAME_BLACK_X+42, NAME_BLACK_Y-8);
+
+		SetAPen(window->RPort, PEN_BGGRAY);
+		Move(window->RPort, NAME_WHITE_X-5, NAME_WHITE_Y-8);
+		Draw(window->RPort, NAME_WHITE_X+42, NAME_WHITE_Y-8);
+	}
+	else if(gameState == GAME_TURN_BLACK) {
+		gameState = GAME_TURN_WHITE;
+		SetAPen(window->RPort, PEN_BLACK);
+		Move(window->RPort, NAME_WHITE_X-5, NAME_WHITE_Y-8);
+		Draw(window->RPort, NAME_WHITE_X+42, NAME_WHITE_Y-8);
+
+		SetAPen(window->RPort, PEN_BGGRAY);
+		Move(window->RPort, NAME_BLACK_X-5, NAME_BLACK_Y-8);
+		Draw(window->RPort, NAME_BLACK_X+42, NAME_BLACK_Y-8);
+	}
 }

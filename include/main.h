@@ -41,11 +41,15 @@ struct Gadget *gadList, *gadTemp, *gadgets[16]; //gadList is internal, gadgets i
 struct Screen *pubScreen, *myScreen;
 struct Window *mainWindow;
 
-#define AREA_SIZE 200
-WORD areaBuffer[AREA_SIZE];
-struct AreaInfo areaInfo;
-
 BOOL ApplicationRequestsClose;
+
+//flood fill
+#define MAXVEC 50
+struct TmpRas tmpRas;
+struct AreaInfo areaInfo;
+ULONG rassize;
+UBYTE *tmpBuf;
+UBYTE *areaBuf;
 
 //gadtools
 APTR vInfo;

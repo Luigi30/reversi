@@ -29,24 +29,37 @@ int main(int argc, char **argv){
 	//ShowTitle(myScreen, FALSE);
 	
 	/* Set up for flood fill */
-	areaInfo = {0};
-	for(int i=0;i<AREA_SIZE;i++){
-		areaBuffer[i] = 0;
-	}
-	InitArea(&areaInfo, areaBuffer, (AREA_SIZE*2)/5);
+	#define WINW 320           /* size of drawing area */
+	#define WINH 200
+	rassize = RASSIZE(mainWindow->GZZWidth, mainWindow->GZZHeight);
+
+	tmpBuf = AllocVec(rassize, MEMF_CHIP|MEMF_CLEAR);
+	InitTmpRas(&tmpRas, tmpBuf, rassize);
+	mainWindow->RPort->TmpRas = &tmpRas;
+
+	areaBuf = AllocVec(5*MAXVEC, MEMF_CLEAR);
+	InitArea(&areaInfo, areaBuf, MAXVEC);
 	mainWindow->RPort->AreaInfo = &areaInfo;
-	mainWindow->RPort->TmpRas = &tr;
-	
+
 	board.initForNewGame();
 	gameState = GAME_TURN_WHITE;
 	REV_DrawBoard(mainWindow);
 	REV_DrawPieces(mainWindow);
-	REV_DrawScores(mainWindow, board);
+	REV_DrawScores(mainWindow);
 		
 	GT_RefreshWindow(mainWindow, NULL);
 	MainWindowEventLoop(mainWindow);
 	
 	//Done with the main loop, clean up and exit.
+	if(tmpBuf){
+		mainWindow->RPort->TmpRas = NULL;
+		FreeVec(tmpBuf);
+	}
+	if(areaBuf){
+		mainWindow->RPort->AreaInfo = NULL;
+		FreeVec(areaBuf);
+	}
+
 	CloseWindow(mainWindow);
 	CloseScreen(myScreen);
 
@@ -69,34 +82,38 @@ void MainWindowEventLoop(struct Window *window){
 	int CLOSE_WINDOW = FALSE;
 	ApplicationRequestsClose = FALSE;
     while(CLOSE_WINDOW == FALSE && ApplicationRequestsClose == FALSE){
-        ULONG signal = Wait(waitSignals); //Wait for an event.
+		msg = GT_GetIMsg(window->UserPort);
 
-        if(signal & windowSignal) {
-            //Process the window event.
-            msg = GT_GetIMsg(window->UserPort);
-            msgClass = msg->Class;
-            GT_ReplyIMsg(msg); //Reply to the message.
-
-            switch(msgClass) {
-                case IDCMP_CLOSEWINDOW:
-                    CLOSE_WINDOW = TRUE;
-                    break;
-                case IDCMP_GADGETUP: //A button was clicked.
-                    Event_ProcessGadgetUp(msg);
-                    break;
-				case IDCMP_MOUSEBUTTONS:
-					if(msg->MouseX == 0) {
-						CLOSE_WINDOW = TRUE;
-					}	
-					if(msg->Code == SELECTDOWN){
-						Event_HandleMouseClick(window, msg->MouseX, msg->MouseY);					
-					}
-					break;
-                default:
-                    //printf("Unhandled msgClass: %lx\n", msgClass);
-                    break;
-            }
+		if(!msg) {
+        	Wait(waitSignals); //Wait for an event.
+			continue;
 		}
+
+		//Process the window event.
+		msgClass = msg->Class;
+
+		switch(msgClass) {
+			case IDCMP_CLOSEWINDOW:
+				CLOSE_WINDOW = TRUE;
+				break;
+			case IDCMP_GADGETUP: //A button was clicked.
+				Event_ProcessGadgetUp(msg);
+				break;
+			case IDCMP_MOUSEBUTTONS:
+				if(msg->MouseX == 0) {
+					CLOSE_WINDOW = TRUE;
+				}	
+				if(msg->Code == SELECTDOWN){
+					Event_HandleMouseClick(window, msg->MouseX, msg->MouseY);					
+				}
+				break;
+			default:
+				//printf("Unhandled msgClass: %lx\n", msgClass);
+				break;
+		}
+
+		GT_ReplyIMsg(msg); //Reply to the message.
+
 	}
 }
 

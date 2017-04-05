@@ -24,9 +24,6 @@
 #define SCORE_BLACK_X 260
 #define SCORE_BLACK_Y 60
 
-//DrawCircle macro. RP = RastPort, X Y = coordinates, R = radius
-#define DrawCircle(RP, X, Y, R) DrawEllipse(RP, X, Y, R, R)
-
 //Combines SetAPen, Move, and Text functions into one macro.
 //RP = RastPort, STRING = char* string, PEN = UBYTE color, X Y = coordinates
 #define PrintString(RP, STRING, PEN, X, Y) SetAPen(RP, PEN); Move(RP, X, Y); Text(RP, STRING, strlen(STRING))
