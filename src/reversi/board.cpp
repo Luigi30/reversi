@@ -119,3 +119,24 @@ UBYTE ReversiBoard::checkDirection(BoardTile goodColor, BoardTile badColor, Tile
 
 	return validDirections;
 }
+
+void ReversiBoard::print() {
+	printf("***\n");
+	for (int row = 0; row < 8; row++) {
+		for (int column = 0; column < 8; column++) {
+			auto piece = getSquare(column, row);
+			switch (piece) {
+			case BOARD_TILE_EMPTY:
+				printf("| |");
+				break;
+			case BOARD_TILE_BLACK:
+				printf("|B|");
+				break;
+			case BOARD_TILE_WHITE:
+				printf("|W|");
+				break;
+			}
+		}
+		printf("\n");
+	}
+}

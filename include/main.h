@@ -7,6 +7,10 @@
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <exec/io.h>
+#include <graphics/gfx.h>
+#include <graphics/gfxbase.h>
+#include <graphics/gels.h>
+#include <graphics/collide.h>
 #include <intuition/intuition.h>
 #include <intuition/screens.h>
 

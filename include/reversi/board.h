@@ -39,6 +39,25 @@ class ReversiBoard {
 	BoardTile square[BOARD_TILE_COUNT];
 	
 	public:
+		ReversiBoard() {
+			for (int i = 0; i < BOARD_TILE_COUNT; i++) {
+				square[i] = BOARD_TILE_EMPTY;
+			}
+		}
+
+		ReversiBoard(const ReversiBoard &obj) {
+			for (int i = 0; i < BOARD_TILE_COUNT; i++) {
+				square[i] = obj.square[i];
+			}
+		}
+
+		ReversiBoard& operator=(const ReversiBoard& obj) {
+			for (int i = 0; i < BOARD_TILE_COUNT; i++) {
+				square[i] = obj.square[i];
+			}
+			return *this;
+		}
+
 		BoardTile getSquare(int x, int y) {
 			char buf[64];
 			sprintf(buf, "getSquare(%d, %d)", x, y);
@@ -56,6 +75,7 @@ class ReversiBoard {
 
 		UBYTE canPlacePiece(BoardTile goodColor, BoardTile badColor, Tile position);
 		UBYTE checkDirection(BoardTile goodColor, BoardTile badColor, Tile position);
+		void print();
 };
 
 extern ReversiBoard board;

@@ -126,7 +126,7 @@ void REV_HandleTileClick(struct Window *window, UWORD mouseX, UWORD mouseY){
 	
 	UBYTE isLegalMove = REV_CheckMoveLegality(tile);
 
-	BoardTile goodColor, badColor;
+	BoardTile goodColor;
 
 	if(isLegalMove){
 		UBYTE pen;
@@ -134,21 +134,18 @@ void REV_HandleTileClick(struct Window *window, UWORD mouseX, UWORD mouseY){
 			case GAME_TURN_WHITE:
 				pen = PEN_WHITE;
 				goodColor = BOARD_TILE_WHITE;
-				badColor = BOARD_TILE_BLACK;
 				break;
 			case GAME_TURN_BLACK:
 				pen = PEN_BLACK;
 				goodColor = BOARD_TILE_BLACK;
-				badColor = BOARD_TILE_WHITE;
 				break;
 			default:
 				pen = PEN_BLUE;
-				goodColor = BOARD_TILE_EMPTY;
-				badColor = BOARD_TILE_EMPTY;
+				goodColor = BOARD_TILE_EMPTY;;
 				break;
 		}
 
-		REV_FlipPieces(window->RPort, tile, isLegalMove, goodColor, badColor);
+		REV_FlipPieces(window->RPort, &board, tile, isLegalMove, goodColor);
 		REV_PlacePiece(window->RPort, pen, tile.x, tile.y);
 		REV_DrawBoard(window);
 		REV_DrawPieces(window);
@@ -214,7 +211,8 @@ UBYTE REV_CheckMoveLegality(Tile move){
 	return board.canPlacePiece(goodColor, badColor, move);
 }
 
-void REV_FlipPieces(struct RastPort *rp, Tile origin, UBYTE directions, BoardTile goodColor, BoardTile badColor){
+//void REV_FlipPieces(struct RastPort *rp, Tile origin, UBYTE directions, BoardTile goodColor, BoardTile badColor){
+void REV_FlipPieces(struct RastPort *rp, ReversiBoard *pBoard, Tile origin, UBYTE directions, BoardTile goodColor) {
 	char buf[64];
 	sprintf(buf, "REV_FlipPieces(): direction flags are 0x%02X\r\n", directions);
 	serialPort.SendString(buf);
@@ -262,8 +260,8 @@ void REV_FlipPieces(struct RastPort *rp, Tile origin, UBYTE directions, BoardTil
 				break;
 		}
 
-		BoardTile currentPiece = board.getSquare(currentTile.x, currentTile.y);
-		board.setSquare(currentTile.x, currentTile.y, goodColor);
+		BoardTile currentPiece = pBoard->getSquare(currentTile.x, currentTile.y);
+		pBoard->setSquare(currentTile.x, currentTile.y, goodColor);
 		sprintf(buf, "Flipped tile (%d,%d)\r\n", currentTile.x, currentTile.y);
 		serialPort.SendString(buf);
 		if(currentPiece == goodColor){

@@ -9,7 +9,7 @@ BINDIR = ../bin
 
 BINS = reversi
 
-_OBJS = main.o reversi.o board.o serial.o
+_OBJS = main.o reversi.o board.o mcarlo.o serial.o
 OBJS = $(patsubst %,$(OBJDIR)/%,$(_OBJS))
 	
 $(BINDIR)/reversi: $(OBJS)
@@ -22,6 +22,9 @@ $(OBJDIR)/reversi.o: reversi/reversi.cpp $(INCDIR)/reversi/reversi.h
 	$(CXX) -c $(CXXFLAGS) -I$(INCDIR) -o $@ $<
 	
 $(OBJDIR)/board.o: reversi/board.cpp $(INCDIR)/reversi/board.h
+	$(CXX) -c $(CXXFLAGS) -I$(INCDIR) -o $@ $<
+
+$(OBJDIR)/mcarlo.o: reversi/mcarlo.cpp $(INCDIR)/reversi/mcarlo.h
 	$(CXX) -c $(CXXFLAGS) -I$(INCDIR) -o $@ $<
 
 $(OBJDIR)/serial.o: serial.cpp $(INCDIR)/serial.h

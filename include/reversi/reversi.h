@@ -41,7 +41,8 @@ void REV_HandleTileClick(struct Window *window, UWORD mouseX, UWORD mouseY);
 void REV_PrintGameStatus(struct Window *window);
 
 UBYTE REV_CheckMoveLegality(Tile tile);
-void REV_FlipPieces(struct RastPort *rp, Tile origin, UBYTE directions, BoardTile goodColor, BoardTile badColor);
+//void REV_FlipPieces(struct RastPort *rp, Tile origin, UBYTE directions, BoardTile goodColor, BoardTile badColor);
+void REV_FlipPieces(struct RastPort *rp, ReversiBoard *pBoard, Tile origin, UBYTE directions, BoardTile goodColor);
 
 void REV_AdvanceGameState(struct Window *window);
 

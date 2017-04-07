@@ -26,7 +26,6 @@ int main(int argc, char **argv){
         WA_Title,       	NULL,
         WA_CustomScreen,	myScreen,
 		TAG_DONE);
-	//ShowTitle(myScreen, FALSE);
 	
 	/* Set up for flood fill */
 	#define WINW 320           /* size of drawing area */
